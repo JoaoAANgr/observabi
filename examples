@@ -1,0 +1,354 @@
+#!/usr/bin/env python3
+"""
+Exemplos de uso dos módulos refatorados (v2).
+Demonstra best practices com Type Hints, Pydantic, e otimizações.
+"""
+
+import sys
+import logging
+from pathlib import Path
+from typing import List
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+def exemplo_1_validacao_dados():
+    """Exemplo 1: Validação automática com Pydantic."""
+    print("\n" + "="*60)
+    print("EXEMPLO 1: Validação Automática com Pydantic")
+    print("="*60)
+    
+    from models import DadosAnalise
+    
+    # ✅ Válido
+    try:
+        dados = DadosAnalise(
+            labels=['Serviço A', 'Serviço B', 'Serviço C'],
+            values=[100, 50, 75]
+        )
+        print("✅ Dados válidos aceitos")
+        print(f"   Total: {sum(dados.values)}")
+    except ValueError as e:
+        print(f"❌ Erro: {e}")
+    
+    # ❌ Inválido (valores negativos)
+    try:
+        dados_invalido = DadosAnalise(
+            labels=['Serviço A', 'Serviço B'],
+            values=[100, -50]  # ❌ Negativo!
+        )
+    except ValueError as e:
+        print(f"✅ Validação funcionou! Erro capturado: {e}")
+    
+    # ❌ Inválido (labels e values com tamanhos diferentes)
+    try:
+        dados_invalido2 = DadosAnalise(
+            labels=['Serviço A', 'Serviço B'],
+            values=[100]  # ❌ Tamanho diferente!
+        )
+    except ValueError as e:
+        print(f"✅ Validação de tamanho funcionou! Erro: {e}")
+
+
+def exemplo_2_analise_vetorizada():
+    """Exemplo 2: Análise com operações vetorizadas (NumPy)."""
+    print("\n" + "="*60)
+    print("EXEMPLO 2: Análise Vetorizada com NumPy")
+    print("="*60)
+    
+    from models import DadosAnalise, ConfiguracaoGrafico
+    from analise_avancada_v2 import AnaliseDados
+    import time
+    
+    dados = DadosAnalise(
+        labels=['Duplicidade de usuário', 'Conexão BD', 'Timeout', 'Memória', 'Rede'],
+        values=[124, 51, 41, 36, 32]
+    )
+    
+    config = ConfiguracaoGrafico(dpi=150)  # Menor DPI para teste
+    analise = AnaliseDados(dados, config)
+    
+    # Gerar gráficos
+    start = time.time()
+    
+    print("\n🎨 Gerando gráficos...")
+    figuras = {
+        'barras_vertical': analise.grafico_barras_vertical(),
+        'pizza': analise.grafico_pizza(),
+        'pareto': analise.grafico_pareto(),
+    }
+    
+    tempo_viz = time.time() - start
+    
+    for nome, fig in figuras.items():
+        analise.salvar_figura(fig, f'exemplos/{nome}.png')
+    
+    print(f"✅ {len(figuras)} gráficos gerados em {tempo_viz:.2f}s")
+    
+    # Relatório estatístico
+    print("\n📊 Estatísticas:")
+    stats = analise.gerar_relatorio_estatistico()
+    for chave, valor in stats.items():
+        print(f"   {chave}: {valor:.2f}" if isinstance(valor, float) else f"   {chave}: {valor}")
+
+
+def exemplo_3_ocr_easyocr():
+    """Exemplo 3: OCR com EasyOCR (muito melhor que Tesseract)."""
+    print("\n" + "="*60)
+    print("EXEMPLO 3: OCR com EasyOCR")
+    print("="*60)
+    
+    from tratamento_dados_v2 import ProcessadorImagemBI
+    
+    # Verificar se há screenshot de exemplo
+    exemplo_img = Path('screenshot_exemplo.png')
+    
+    if not exemplo_img.exists():
+        print(f"ℹ️  Imagem de exemplo não encontrada: {exemplo_img}")
+        print("   Crie um screenshot de tabela e salve como 'screenshot_exemplo.png'")
+        print("\n   Quando tiver a imagem, execute:")
+        print("   resultado = ProcessadorImagemBI.processar_imagem_bi('screenshot_exemplo.png')")
+        return
+    
+    print(f"📸 Processando imagem: {exemplo_img}")
+    resultado = ProcessadorImagemBI.processar_imagem_bi(
+        exemplo_img,
+        metodo_ocr='easyocr'
+    )
+    
+    if resultado.sucesso:
+        print(f"✅ OCR bem-sucedido!")
+        print(f"   Confiança: {resultado.confianca:.1%}")
+        print(f"   Tempo: {resultado.tempo_processamento:.2f}s")
+        print(f"   Itens extraídos: {len(resultado.labels)}")
+        for label, valor in zip(resultado.labels, resultado.values):
+            print(f"     • {label}: {int(valor)}")
+    else:
+        print(f"❌ Erro no OCR: {resultado.mensagem}")
+
+
+def exemplo_4_exportacao_pdf():
+    """Exemplo 4: Exportação de PDF com tabelas formatadas."""
+    print("\n" + "="*60)
+    print("EXEMPLO 4: Exportação para PDF")
+    print("="*60)
+    
+    from models import DadosAnalise
+    from exportar_pdf_v2 import ExportadorPDF
+    
+    dados = DadosAnalise(
+        labels=['Database Error', 'API Timeout', 'Memory Leak', 'Network Issue', 'Auth Failed'],
+        values=[87, 65, 42, 38, 23]
+    )
+    
+    exportador = ExportadorPDF()
+    
+    # Criar diretório
+    Path('exemplos').mkdir(exist_ok=True)
+    
+    # Gerar PDF
+    resultado = exportador.gerar_pdf_completo(
+        dados,
+        'exemplos/relatorio_exemplo.pdf'
+    )
+    
+    if resultado.sucesso:
+        print(f"✅ PDF gerado com sucesso!")
+        print(f"   Caminho: {resultado.caminho}")
+        print(f"   Tempo: {resultado.tempo_geracao:.2f}s")
+    else:
+        print(f"❌ Erro: {resultado.mensagem}")
+
+
+def exemplo_5_processamento_arquivo():
+    """Exemplo 5: Processamento de arquivo CSV/Excel."""
+    print("\n" + "="*60)
+    print("EXEMPLO 5: Processamento de Arquivo CSV")
+    print("="*60)
+    
+    from tratamento_dados_v2 import TratamentoDados
+    
+    # Criar CSV de exemplo
+    csv_path = 'exemplos/dados_exemplo.csv'
+    Path('exemplos').mkdir(exist_ok=True)
+    
+    with open(csv_path, 'w', encoding='utf-8') as f:
+        f.write("Serviço,Incidentes\n")
+        f.write("Database,124\n")
+        f.write("API,87\n")
+        f.write("Cache,56\n")
+        f.write("Auth,42\n")
+    
+    print(f"📄 Criado: {csv_path}")
+    
+    # Processar CSV
+    try:
+        dados = TratamentoDados.extrair_dados_csv(csv_path)
+        print(f"✅ CSV processado!")
+        print(f"   Labels: {dados.labels}")
+        print(f"   Values: {dados.values}")
+        print(f"   Total: {sum(dados.values)}")
+    except Exception as e:
+        print(f"❌ Erro: {e}")
+
+
+def exemplo_6_processamento_texto_manual():
+    """Exemplo 6: Processamento de texto colado manualmente."""
+    print("\n" + "="*60)
+    print("EXEMPLO 6: Processamento de Texto Manual")
+    print("="*60)
+    
+    from tratamento_dados_v2 import TratamentoDados
+    
+    # Texto em vários formatos
+    texto_misto = """
+    Database Error: 124
+    API Timeout 87
+    Memory Leak - 56
+    42 Auth Failure
+    Network Issue | 31
+    """
+    
+    print(f"📝 Texto de entrada:")
+    print(texto_misto)
+    
+    # Processar
+    dados = TratamentoDados.extrair_dados_texto_manual(texto_misto)
+    
+    print(f"\n✅ Processado!")
+    print(f"   Labels: {dados.labels}")
+    print(f"   Values: {dados.values}")
+
+
+def exemplo_7_decoradores_performance():
+    """Exemplo 7: Decoradores para performance e validação."""
+    print("\n" + "="*60)
+    print("EXEMPLO 7: Decoradores para Performance")
+    print("="*60)
+    
+    from utils import medir_tempo, cache_resultado, validar_nao_vazio
+    import time
+    
+    @medir_tempo
+    def operacao_lenta():
+        """Operação que será cronometrada."""
+        time.sleep(0.1)
+        return "Resultado"
+    
+    resultado = operacao_lenta()
+    print(f"✅ Resultado: {resultado}")
+    
+    @cache_resultado(ttl_segundos=60)
+    def carregar_dados_pesado():
+        """Dados são cacheados por 60 segundos."""
+        time.sleep(0.1)
+        return {'dados': [1, 2, 3]}
+    
+    print("\n⏱️  Primeira chamada (sem cache):")
+    start = time.time()
+    r1 = carregar_dados_pesado()
+    print(f"   Tempo: {time.time() - start:.3f}s")
+    
+    print("\n⚡ Segunda chamada (com cache):")
+    start = time.time()
+    r2 = carregar_dados_pesado()
+    print(f"   Tempo: {time.time() - start:.6f}s (cache!)")
+    
+    @validar_nao_vazio('labels')
+    def processar(labels):
+        return f"Processando {len(labels)} labels"
+    
+    print(f"\n✅ Validação: {processar(['A', 'B', 'C'])}")
+
+
+def exemplo_8_type_hints_e_mypy():
+    """Exemplo 8: Type hints para segurança."""
+    print("\n" + "="*60)
+    print("EXEMPLO 8: Type Hints e Type Safety")
+    print("="*60)
+    
+    from typing import List
+    from models import DadosAnalise
+    from analise_avancada_v2 import AnaliseDados
+    from matplotlib.figure import Figure
+    
+    def processar_analise(
+        labels: List[str],
+        values: List[float],
+        titulo: str = "Análise Padrão"
+    ) -> Figure:
+        """
+        Função com type hints completos.
+        
+        Args:
+            labels: Lista de labels
+            values: Lista de valores
+            titulo: Título da análise
+        
+        Returns:
+            Figure do Matplotlib
+        """
+        dados = DadosAnalise(labels=labels, values=values)
+        analise = AnaliseDados(dados)
+        return analise.grafico_barras_vertical()
+    
+    print("✅ Função com type hints:")
+    print(f"   Assinatura: {processar_analise.__annotations__}")
+    
+    # IDE consegue:
+    # 1. Autocompletar parâmetros
+    # 2. Detectar erros de tipo em tempo de escrita
+    # 3. Documentação automática
+    
+    print("\n💡 Benefícios:")
+    print("   ✅ IDE pode autocompletar")
+    print("   ✅ Mypy detecta erros antes da execução")
+    print("   ✅ Código auto-documentado")
+    print("   ✅ Refactoring seguro")
+
+
+def main():
+    """Executa todos os exemplos."""
+    print("\n" + "╔" + "="*58 + "╗")
+    print("║" + " EXEMPLOS DE USO - OBSERVABI REFATORADO (v2) ".center(58) + "║")
+    print("╚" + "="*58 + "╝")
+    
+    exemplos = [
+        ("Validação de Dados", exemplo_1_validacao_dados),
+        ("Análise Vetorizada", exemplo_2_analise_vetorizada),
+        ("OCR com EasyOCR", exemplo_3_ocr_easyocr),
+        ("Exportação PDF", exemplo_4_exportacao_pdf),
+        ("Arquivo CSV", exemplo_5_processamento_arquivo),
+        ("Texto Manual", exemplo_6_processamento_texto_manual),
+        ("Decoradores", exemplo_7_decoradores_performance),
+        ("Type Hints", exemplo_8_type_hints_e_mypy),
+    ]
+    
+    for i, (nome, func) in enumerate(exemplos, 1):
+        try:
+            func()
+        except Exception as e:
+            print(f"\n❌ Erro no exemplo {i} ({nome}): {e}")
+            if "--verbose" in sys.argv:
+                import traceback
+                traceback.print_exc()
+    
+    print("\n" + "╔" + "="*58 + "╗")
+    print("║" + " EXEMPLOS CONCLUÍDOS ".center(58) + "║")
+    print("╚" + "="*58 + "╝\n")
+    
+    print("📚 Próximos passos:")
+    print("   1. Adapte a interface.py para usar os novos módulos (v2)")
+    print("   2. Instale EasyOCR: pip install easyocr")
+    print("   3. Teste com seus dados reais")
+    print("   4. Use Type Hints em seu código")
+    print("   5. Implemente testes com pytest\n")
+
+
+if __name__ == '__main__':
+    main()

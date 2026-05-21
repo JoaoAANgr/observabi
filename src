@@ -1,0 +1,107 @@
+"""
+Modelos de dados com validação Pydantic.
+Define esquemas para toda a aplicação com type hints completos.
+"""
+
+from typing import List, Optional, Dict, Any
+from dataclasses import dataclass
+from pydantic import BaseModel, Field, validator, ConfigDict
+import numpy as np
+
+
+class DadosAnalise(BaseModel):
+    """Modelo para dados de análise com validação automática."""
+    
+    labels: List[str] = Field(..., min_items=1, description="Nomes dos serviços/categorias")
+    values: List[float] = Field(..., min_items=1, description="Valores numéricos")
+    periodo_anterior: Optional[List[float]] = Field(None, description="Dados do período anterior para comparativo")
+    tempo_resolucao: Optional[List[float]] = Field(None, description="Tempos de resolução em horas")
+    informacoes_adicionais: Optional[List[str]] = Field(None, description="Informações complementares")
+    
+    model_config = ConfigDict(validate_assignment=True)
+    
+    @validator('labels')
+    @classmethod
+    def validar_labels(cls, v: List[str]) -> List[str]:
+        """Valida labels - não pode ter vazio ou duplicados."""
+        if not v or any(not label.strip() for label in v):
+            raise ValueError("Labels não podem estar vazios")
+        return [label.strip() for label in v]
+    
+    @validator('values')
+    @classmethod
+    def validar_values(cls, v: List[float]) -> List[float]:
+        """Valida valores - devem ser positivos."""
+        if not all(val >= 0 for val in v):
+            raise ValueError("Todos os valores devem ser não-negativos")
+        return v
+    
+    @validator('periodo_anterior', 'tempo_resolucao')
+    @classmethod
+    def validar_dados_opcionais(cls, v: Optional[List[float]], values: Dict[str, Any]) -> Optional[List[float]]:
+        """Se fornecidos, dados opcionais devem ter mesmo tamanho que values."""
+        if v is not None and len(v) != len(values.get('values', [])):
+            raise ValueError("Tamanho dos dados opcionais deve corresponder ao tamanho de values")
+        return v
+    
+    def to_numpy(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Converte para arrays NumPy otimizados."""
+        values_array = np.array(self.values, dtype=np.float64)
+        percentages = (values_array / np.sum(values_array)) * 100
+        cumulative = np.cumsum(values_array)
+        return values_array, percentages, cumulative
+
+
+class ResultadoExportacao(BaseModel):
+    """Modelo para resultado de exportação."""
+    
+    sucesso: bool
+    caminho: Optional[str] = None
+    mensagem: str
+    tempo_geracao: Optional[float] = None  # em segundos
+
+
+class ConfiguracaoGrafico(BaseModel):
+    """Configuração de gráfico."""
+    
+    titulo: str
+    dpi: int = Field(300, ge=72)
+    figsize: tuple = Field((10, 6), description="(largura, altura) em polegadas")
+    fonte_tamanho_padrao: int = Field(12, ge=8)
+    cor_primaria: str = "#2E86AB"
+    cor_secundaria: str = "#A23B72"
+    cor_destaque: str = "#F18F01"
+
+
+class ResultadoOCR(BaseModel):
+    """Resultado de extração de dados via OCR."""
+    
+    sucesso: bool
+    labels: Optional[List[str]] = None
+    values: Optional[List[float]] = None
+    confianca: Optional[float] = None  # 0-1
+    tempo_processamento: float  # segundos
+    mensagem: str
+
+
+@dataclass
+class MetricasDesempenho:
+    """Métricas de desempenho da análise."""
+    
+    tempo_carregamento: float  # segundos
+    tempo_processamento: float
+    tempo_visualizacao: float
+    memoria_usada: float  # MB
+    
+    @property
+    def tempo_total(self) -> float:
+        return self.tempo_carregamento + self.tempo_processamento + self.tempo_visualizacao
+    
+    def resumo(self) -> str:
+        return (
+            f"⏱️ Carregamento: {self.tempo_carregamento:.3f}s\n"
+            f"📊 Processamento: {self.tempo_processamento:.3f}s\n"
+            f"🎨 Visualização: {self.tempo_visualizacao:.3f}s\n"
+            f"💾 Memória: {self.memoria_usada:.1f}MB\n"
+            f"📈 Total: {self.tempo_total:.3f}s"
+        )

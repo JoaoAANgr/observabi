@@ -1,0 +1,49 @@
+# Dependências do ObservaBI com refatoração profissional
+# Instalação: pip install -r requirements_v2.txt
+
+# === CORE (Python 3.10+) ===
+numpy>=1.24.0              # Computação numérica vetorizada
+pandas>=2.0.0              # Análise de dados
+
+# === VISUALIZAÇÃO ===
+matplotlib>=3.7.0          # Gráficos profissionais
+reportlab>=4.0.0           # Geração de PDF
+
+# === PROCESSAMENTO DE DADOS ===
+Pillow>=10.0.0            # Processamento de imagens (para OCR)
+openpyxl>=3.1.0           # Exportação para Excel
+
+# === OCR PROFISSIONAL (NOVO) ===
+easyocr>=1.7.0            # ⭐ OCR com IA (RECOMENDADO!)
+# Alternativa (fallback):
+# pytesseract>=0.3.10     # Tesseract OCR (menos preciso)
+
+# === VALIDAÇÃO DE DADOS (NOVO) ===
+pydantic>=2.0.0           # Validação de schemas com types
+
+# === GUI ===
+# tkinter vem com Python, mas em linux:
+# sudo apt-get install python3-tk
+
+# === COMPILAÇÃO EXECUTÁVEL ===
+pyinstaller>=6.0.0        # Compilar para .exe
+
+# === DESENVOLVIMENTO (opcional) ===
+# mypy>=1.5.0              # Type checking
+# pytest>=7.4.0            # Testes unitários
+# black>=23.9.0            # Formatação de código
+# flake8>=6.1.0            # Linting
+
+# === PERFORMANCE (opcional) ===
+# psutil>=5.9.0            # Monitoramento de recursos
+
+# NOTAS:
+# 1. EasyOCR é MUITO melhor que Tesseract para português
+#    - Download automático de modelo OCR na primeira execução (~100MB)
+#    - Use GPU se disponível: CUDA >= 11.0
+# 
+# 2. Pydantic v2 é recomendado (mais rápido e com better types)
+#
+# 3. Para desenvolvimento:
+#    pip install -r requirements_v2.txt[dev]
+#    (requer extras_require em setup.py)
